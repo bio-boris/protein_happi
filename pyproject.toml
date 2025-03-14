@@ -1,0 +1,24 @@
+[project]
+name = "protein-happi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=3.3.2",
+    "fastapi>=0.115.11",
+    "h5py>=3.13.0",
+    "numba>=0.61.0",
+    "parsl>=2025.3.10",
+    "parsl-object-registry",
+    "pydantic>=2.10.6",
+    "sentence-transformers>=3.4.1",
+    "sentencepiece>=0.2.0",
+    "torch>=2.6.0",
+    "tqdm>=4.67.1",
+    "transformers>=4.49.0",
+    "typer>=0.15.2",
+]
+
+[tool.uv.sources]
+parsl-object-registry = { git = "https://github.com/braceal/parsl_object_registry.git" }
