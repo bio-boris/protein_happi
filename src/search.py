@@ -80,7 +80,7 @@ class SearchResponse(BaseModel):
 
 
 @lru_cache(maxsize=None)
-def _initialize_search() -> tuple[Retriever, np.ndarray]:
+def _initialize_search(settings=None) -> tuple[Retriever, np.ndarray]:
     """Initialize the retriever and load the Uniprot IDs.
 
     Returns
@@ -90,15 +90,17 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
     np.ndarray
         The Uniprot IDs.
     """
-    # Load the static configuration
-    settings = get_settings()
+    if settings is None:
+        settings = get_settings()
 
     # The encoder model always gets placed on GPU:0 relative
     # to CUDA_VISIBLE_DEVICES. If `gpus` > 0, then the faiss index
     # will be placed on the next available GPUs (relative to
     # CUDA_VISIBLE_DEVICES). Otherwise, the faiss index will share
     # the same GPU as the encoder.
+
     search_gpus = 0 if settings.GPUS == 0 else list(range(1, settings.GPUS + 1))
+
 
     # Initialize the faiss index
     faiss_index = FaissIndex(
