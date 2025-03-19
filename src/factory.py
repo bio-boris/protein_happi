@@ -1,41 +1,19 @@
-from fastapi import FastAPI, Body
-
-def search():
-    pass
-
-def data():
-    pass
-
-
-def validate(data):
-    pass
+from fastapi import FastAPI
+from .search import search_impl
+from .search import SearchRequest
+from .search import SearchResponse
 
 
 def create_app() -> FastAPI:
     """App factory function."""
-    app = FastAPI(title="ABC")
+    app = FastAPI(title="AI Sequence Similarity Search API")
 
     @app.get("/")
     async def root():
         return {"message": "Hello World"}
 
-    @app.post("/search")
-    async def search(
-        data: dict = Body(
-            example={
-                "query_sequences": [
-                    {"id": "Q1", "sequence": "MKTIIALSY..."},
-                    {"id": "Q2", "sequence": "MKALILVCL..."}
-                ],
-                "similarity_threshold": 0.7,
-                "max_hits": 5,
-                "return_query_embeddings": True,
-                "return_hit_embeddings": False
-            }
-        )
-    ):
-        vd = validate(data)
-        result = search(data)
-        return result
+    @app.post("/search", response_model=SearchResponse)
+    async def search(query: SearchRequest) -> SearchResponse:
+        return search_impl(query)
 
     return app
