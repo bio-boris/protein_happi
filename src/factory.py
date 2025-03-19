@@ -19,7 +19,7 @@ def create_app(settings=None) -> FastAPI:
     async def root():
         return {"message": "Hello World"}
 
-    @app.get("/search", )
+    @app.post("/search", response_model=SearchResponse)
     async def search(query: SearchRequest) -> SearchResponse:
         return search_impl(query)
 
