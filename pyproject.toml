@@ -3,14 +3,13 @@ name = "protein-happi"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.11",
     "pydantic-settings>=2.8.1",
     "protein_search_evals",
     "uvicorn>=0.34.0",
-    "faiss-gpu>=1.7.2",
-    "numpy<2"
+    "faiss-gpu-cu12==1.10.0",
 ]
 
 [tool.uv.sources]
