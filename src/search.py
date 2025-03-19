@@ -1,4 +1,4 @@
-from typing_extensions import Self
+from typing import Self
 import numpy as np
 from functools import lru_cache
 from .config import get_settings

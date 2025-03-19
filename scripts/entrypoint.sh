@@ -1,5 +1,4 @@
-#!/usr/local/bin/env bash
-
+#!/usr/bin/env bash
 
 VENV_PATH=".venv"
 if [ -d "$VENV_PATH" ]; then
@@ -10,4 +9,4 @@ else
     exit 1
 fi
 
-uvicorn src.factory:create_app --host 0.0.0.0 --port 8000 --factory
+uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory
