@@ -98,7 +98,7 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
     # will be placed on the next available GPUs (relative to
     # CUDA_VISIBLE_DEVICES). Otherwise, the faiss index will share
     # the same GPU as the encoder.
-    search_gpus = 0 if settings.GPUS == 0 else list(range(1, settings.GPUS))
+    search_gpus = 0 if settings.GPUS == 0 else list(range(1, settings.GPUS + 1))
 
     # Initialize the faiss index
     faiss_index = FaissIndex(
@@ -145,16 +145,20 @@ def search_impl(query: SearchRequest) -> SearchResponse:
     )
 
     # Convert query_embeddings to list[list[float]]
-    query_embeddings = query_embeddings.tolist()
+    if query.return_query_embeddings:
+        query_embeddings = query_embeddings.tolist()
 
     # Loop over each query sequence and collect the hits, embeddings, and scores
     all_hits = []
-    for indices, scores, query_embedding, query_sequence in zip(
+    for indices, scores, q_embedding, query_sequence in zip(
         results.total_indices,
         results.total_scores,
         query_embeddings,
         query.query_sequences,
     ):
+        # Only return the query embedding if requested
+        query_embedding = q_embedding if query.return_query_embeddings else []
+
         # TODO: If there are no hits found, do we want to make best_hit None?
         # Check the case where no hits were found
         if len(indices) == 0:
