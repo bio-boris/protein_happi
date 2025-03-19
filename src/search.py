@@ -98,7 +98,7 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
     # will be placed on the next available GPUs (relative to
     # CUDA_VISIBLE_DEVICES). Otherwise, the faiss index will share
     # the same GPU as the encoder.
-    search_gpus = 0 if settings.GPUS == 0 else list(range(1, settings.GPUS))
+    search_gpus = 0 if settings.GPUS == 0 else list(range(1, settings.GPUS + 1))
 
     # Initialize the faiss index
     faiss_index = FaissIndex(
