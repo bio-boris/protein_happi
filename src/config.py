@@ -21,10 +21,9 @@ class LLMHomologyApiSettings(BaseSettings):
     AUTH_URL: str
     ADMIN_ROLES: list = ["LLMHomologyAdmin"]
     VCS_REF: str
-    MODEL_DIR: str
 
     # The similarity search configuration
-    GPUS: int = Field(
+    SEARCH_GPUS: int = Field(
         default=0,
         ge=0,
         description="The number of GPUs to use for the similarity search. "
