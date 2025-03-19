@@ -25,7 +25,6 @@ class LLMHomologyApiSettings(BaseSettings):
 
     # The similarity search configuration
     GPUS: int = Field(
-        default=0,
         ge=0,
         description="The number of GPUs to use for the similarity search. "
         "Using 0 will place the faiss index on the same GPU as the encoder. "
