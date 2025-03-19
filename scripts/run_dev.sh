@@ -17,6 +17,7 @@ export MODEL_DIR=/scratch/sprot/sprot_esm_650m_faiss
 export VCS_REF=manual
 export EMBEDDING_DATASET_DIR=/scratch/sprot/sprot_esm_650m_faiss
 export FAISS_INDEX_PATH=/scratch/sprot/sprot_esm_650m_faiss/faiss_index
+export GPUS=2
 
 
 uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory
