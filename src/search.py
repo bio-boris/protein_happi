@@ -144,8 +144,11 @@ def initialize_search(
     retriever = Retriever(faiss_index=faiss_index, encoder=encoder)
 
     # Preload all the Uniprot IDs to avoid disk reads during the search
+    print("Preloading Uniprot IDs...")
     num_uniprot_ids = np.arange(len(retriever.faiss_index.dataset))
     all_uniprot_ids = retriever.get(num_uniprot_ids, key="tags")
+
+    print("Search initialized.")
 
     return retriever, all_uniprot_ids
 
