@@ -23,7 +23,7 @@ class LLMHomologyApiSettings(BaseSettings):
     VCS_REF: str
 
     # The similarity search configuration
-    SEARCH_GPUS: int = Field(
+    FAISS_SEARCH_GPUS: int = Field(
         default=0,
         ge=0,
         description="The number of GPUs to use for the similarity search. "
@@ -31,17 +31,26 @@ class LLMHomologyApiSettings(BaseSettings):
         "Using more than 0 will place the faiss index on the next available GPUs. "
         "The GPU placement is relative to CUDA_VISIBLE_DEVICES.",
     )
-    SEARCH_PRECISION: Literal["float32", "ubinary"] = Field(
+    FAISS_SEARCH_PRECISION: Literal["float32", "ubinary"] = Field(
         default="ubinary",
         description="The precision of the faiss index search [float32, ubinary].",
     )
-    EMBEDDING_DATASET_DIR: Path = Field(
+    FAISS_EMBEDDING_DATASET_DIR: Path = Field(
         ...,
         description="The directory containing the Arrow embedding dataset.",
     )
     FAISS_INDEX_PATH: Path = Field(
         ...,
         description="The path to the faiss index file.",
+    )
+    FAISS_DATASET_CHUNK_DIR: Path | None = Field(
+        default=None,
+        description="The directory containing the Arrow embedding dataset chunks.",
+    )
+    FAISS_NUM_QUANTIZATION_WORKERS: int = Field(
+        default=1,
+        ge=1,
+        description="The number of quantization workers.",
     )
     ENCODER_NAME: Literal["esm2", "esmc", "prottrans"] = Field(
         default="esm2",

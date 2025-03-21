@@ -98,21 +98,31 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
     # will be placed on the next available GPUs (relative to
     # CUDA_VISIBLE_DEVICES). Otherwise, the faiss index will share
     # the same GPU as the encoder.
-    if settings.SEARCH_GPUS == 0:
+    if settings.FAISS_SEARCH_GPUS == 0:
         search_gpus = 0
     else:
-        search_gpus = list(range(1, settings.SEARCH_GPUS + 1))
+        search_gpus = list(range(1, settings.FAISS_SEARCH_GPUS + 1))
 
     # Print the GPU configuration
     print("Encoder GPU: 0")
     print(f"Faiss Search GPUs: {search_gpus}")
 
+    # If specified, collect all sub directorys within the chunk directory
+    if settings.FAISS_DATASET_CHUNK_DIR is None:
+        dataset_chunk_paths = None
+    else:
+        dataset_chunk_paths = [
+            x for x in settings.FAISS_DATASET_CHUNK_DIR.iterdir() if x.is_dir()
+        ]
+
     # Initialize the faiss index
     faiss_index = FaissIndex(
-        dataset_dir=settings.EMBEDDING_DATASET_DIR,
+        dataset_dir=settings.FAISS_EMBEDDING_DATASET_DIR,
         faiss_index_path=settings.FAISS_INDEX_PATH,
-        precision=settings.SEARCH_PRECISION,
+        dataset_chunk_paths=dataset_chunk_paths,
+        precision=settings.FAISS_SEARCH_PRECISION,
         search_algorithm="exact",
+        num_quantization_workers=settings.FAISS_NUM_QUANTIZATION_WORKERS,
         search_gpus=search_gpus,
     )
 
