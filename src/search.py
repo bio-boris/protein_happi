@@ -2,6 +2,7 @@ from typing import Self
 import numpy as np
 from functools import lru_cache
 from .config import get_settings
+from .config import LLMHomologyApiSettings
 from pydantic import BaseModel, Field
 from pydantic import model_validator
 from protein_search_evals.embed import get_encoder
@@ -80,7 +81,9 @@ class SearchResponse(BaseModel):
 
 
 @lru_cache(maxsize=None)
-def _initialize_search() -> tuple[Retriever, np.ndarray]:
+def initialize_search(
+    settings: LLMHomologyApiSettings | None = None,
+) -> tuple[Retriever, np.ndarray]:
     """Initialize the retriever and load the Uniprot IDs.
 
     Returns
@@ -91,7 +94,8 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
         The Uniprot IDs.
     """
     # Load the static configuration
-    settings = get_settings()
+    if settings is None:
+        settings = get_settings()
 
     # The encoder model always gets placed on GPU:0 relative
     # to CUDA_VISIBLE_DEVICES. If `gpus` > 0, then the faiss index
@@ -149,7 +153,7 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
 def search_impl(query: SearchRequest) -> SearchResponse:
     """The search implementation."""
     # Get the cached retriever, or initialize it if it doesn't exist
-    retriever, all_uniprot_ids = _initialize_search()
+    retriever, all_uniprot_ids = initialize_search()
 
     # Collect the query sequences
     query_sequences = [x.sequence for x in query.query_sequences]
