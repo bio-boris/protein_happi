@@ -45,12 +45,14 @@ class LLMHomologyApiSettings(BaseSettings):
     )
     FAISS_DATASET_CHUNK_DIR: Path | None = Field(
         default=None,
-        description="The directory containing the Arrow embedding dataset chunks.",
+        description="The directory containing the chunked embeddings "
+        "database for building the FAISS index",
     )
     FAISS_NUM_QUANTIZATION_WORKERS: int = Field(
         default=1,
         ge=1,
-        description="The number of quantization workers.",
+        description="The number of CPU workers to use for quantization "
+        "(reads the chunked embeddings database)",
     )
     ENCODER_NAME: Literal["esm2", "esmc", "prottrans"] = Field(
         default="esm2",
