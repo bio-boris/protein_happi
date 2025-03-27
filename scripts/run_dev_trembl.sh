@@ -22,13 +22,13 @@ export VCS_REF=$(git status)
 export HF_HOME=/scratch/abrace/.cache
 
 # The directory containing the merged embeddings database
-export FAISS_EMBEDDING_DATASET_DIR=/scratch/abrace/data/trembl/embeddings.merge
+export FAISS_EMBEDDING_DATASET_DIR=/scratch/abrace/data/trembl/embeddings.merge.kbase
 
 # The directory containing the FAISS index
 export FAISS_INDEX_PATH=/scratch/abrace/data/trembl/ubinary-trembl-faiss.index
 
 # The number of GPUs to use for the FAISS index search
-export FAISS_SEARCH_GPUS=2
+export FAISS_SEARCH_GPUS=1
 
 # The search precision for the FAISS index search
 export FAISS_SEARCH_PRECISION=ubinary
