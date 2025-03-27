@@ -107,7 +107,7 @@ def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriev
     print("Encoder GPU: 0")
     print(f"Faiss Search GPUs: {search_gpus}")
 
-    # If specified, collect all sub directorys within the chunk directory
+    # If specified, collect all subdirectories within the chunk directory
     if settings.FAISS_DATASET_CHUNK_DIR is None:
         dataset_chunk_paths = None
     else:
