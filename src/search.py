@@ -1,10 +1,10 @@
 from typing import Self
-import numpy as np
 from functools import lru_cache
 from .config import get_settings
 from .config import LLMHomologyApiSettings
 from pydantic import BaseModel, Field
 from pydantic import model_validator
+from natsort import natsorted
 from protein_search_evals.embed import get_encoder
 from protein_search_evals.search import FaissIndex
 from protein_search_evals.search import Retriever
@@ -81,17 +81,13 @@ class SearchResponse(BaseModel):
 
 
 @lru_cache(maxsize=None)
-def initialize_search(
-    settings: LLMHomologyApiSettings | None = None,
-) -> tuple[Retriever, np.ndarray]:
-    """Initialize the retriever and load the Uniprot IDs.
+def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriever:
+    """Initialize the retriever.
 
     Returns
     -------
     Retriever
         The initialized retriever.
-    np.ndarray
-        The Uniprot IDs.
     """
     # Load the static configuration
     if settings is None:
@@ -115,9 +111,7 @@ def initialize_search(
     if settings.FAISS_DATASET_CHUNK_DIR is None:
         dataset_chunk_paths = None
     else:
-        dataset_chunk_paths = [
-            x for x in settings.FAISS_DATASET_CHUNK_DIR.iterdir() if x.is_dir()
-        ]
+        dataset_chunk_paths = natsorted(settings.FAISS_DATASET_CHUNK_DIR.glob("*"))
 
     # Initialize the faiss index
     faiss_index = FaissIndex(
@@ -128,6 +122,7 @@ def initialize_search(
         search_algorithm="exact",
         num_quantization_workers=settings.FAISS_NUM_QUANTIZATION_WORKERS,
         search_gpus=search_gpus,
+        scale_mode=True,
     )
 
     # Initialize the encoder
@@ -143,20 +138,15 @@ def initialize_search(
     # Initialize the retriever
     retriever = Retriever(faiss_index=faiss_index, encoder=encoder)
 
-    # Preload all the Uniprot IDs to avoid disk reads during the search
-    print("Preloading Uniprot IDs...")
-    num_uniprot_ids = np.arange(len(retriever.faiss_index.dataset))
-    all_uniprot_ids = retriever.get(num_uniprot_ids, key="tags")
-
     print("Search initialized.")
 
-    return retriever, all_uniprot_ids
+    return retriever
 
 
 def search_impl(query: SearchRequest) -> SearchResponse:
     """The search implementation."""
     # Get the cached retriever, or initialize it if it doesn't exist
-    retriever, all_uniprot_ids = initialize_search()
+    retriever = initialize_search()
 
     # Collect the query sequences
     query_sequences = [x.sequence for x in query.query_sequences]
@@ -198,7 +188,7 @@ def search_impl(query: SearchRequest) -> SearchResponse:
             continue
 
         # Get the Uniprot IDs for the hits
-        hit_ids = all_uniprot_ids[indices]
+        hit_ids = retriever.get(indices, key="tags")
 
         # Load the embeddings for the hits from disk if requested
         if query.return_hit_embeddings:
@@ -241,3 +231,26 @@ def search_impl(query: SearchRequest) -> SearchResponse:
         )
 
     return SearchResponse(hits=all_hits)
+
+
+if __name__ == "__main__":
+    # A quick test
+    data = {
+        "query_sequences": [
+            {
+                "id": "string",
+                "sequence": "MPETTNLPAGPAGPDRPDSPDSPDSPDSPDRRLKGRGIPDAPGNRFERLHVEIDVGAMAEMQTVDPEWEAAPPRTVFYRDETQSIVSTNASPDLNFDASLNPYRGCEHGCSYCYARPYHEYLGFNSGIDFETRILVKENAGALLEKELGSKKWKPKTLVCSGVTDPYQPVEKKLKITRRCLEVLEHFRNPVGIITKNHLVTRDIDHLGVLAREHSAACVYISITTLDRNLAKVLEPRASSPSFRLRAVKELSEAGIPVGVSLGPTIPGLNDHEMPAILEAASDHGARTAFYILLRLPHGVSKMFSDWLGCHFPQRKEKVLGRLRELRGGKLNDSRFGVRFKGEGPLASEIESLFRVSARKCGLHRAMPELSCAAFRRAAGGGQMELF",
+            }
+        ],
+        "similarity_threshold": 0,
+        "best_hit_only": False,
+        "max_hits": 5,
+        "return_query_embeddings": False,
+        "return_hit_embeddings": False,
+    }
+
+    query = SearchRequest(**data)
+
+    response = search_impl(query)
+
+    print(response)
