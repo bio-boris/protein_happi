@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.11",
     "pydantic-settings>=2.8.1",
-    "protein_search_evals==0.0.2",
+    "protein_search_evals==0.0.3",
     "uvicorn>=0.34.0",
     "faiss-gpu-cu12==1.10.0",
 ]
