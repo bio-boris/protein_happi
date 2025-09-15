@@ -1,3 +1,23 @@
+#!/usr/bin/env bash
+
+VENV_PATH=".venv"
+if [ -d "$VENV_PATH" ]; then
+    echo "Activating virtual environment..."
+    . "$VENV_PATH/bin/activate"
+else
+    echo "Virtual environment not found at $VENV_PATH. Exiting..."
+    exit 1
+fi
+
+export AUTH_URL='https://ci.kbase.us/services/auth/api/V2/me'
+export ROOT_PATH='/services/llm_homology_api/'
+export VERSION=0.0.1
+export VCS_REF=$(git status)
+#export PYTHONPATH=.:llm_homology_api:llm_homology_api/src
+
+# Similarity search environment variables
+# ========================================
+
 # The cache directory for the encoder model weights
 export HF_HOME=/scratch/abrace/.cache
 
@@ -5,8 +25,8 @@ export HF_HOME=/scratch/abrace/.cache
 export FAISS_EMBEDDING_DATASET_DIR=/scratch/abrace/data/uniprot_2025_02/sprot-trembl-combined-embeddings/embeddings.merge
 
 # The directory containing the FAISS index
-#export FAISS_INDEX_PATH=/scratch/abrace/data/uniprot_2025_02/sprot-trembl-combined-embeddings/ubinary-uniprot-combined-esm3b-faesm-faiss-ivf.index
-export FAISS_INDEX_PATH=/scratch/abrace/data/uniprot_2025_02/sprot-trembl-combined-embeddings/ubinary-uniprot-combined-esm3b-faesm-faiss-exact.index
+export FAISS_INDEX_PATH=/scratch/abrace/data/uniprot_2025_02/sprot-trembl-combined-embeddings/ubinary-uniprot-combined-esm3b-faesm-faiss-ivf.index
+#export FAISS_INDEX_PATH=/dev/shm/ubinary-uniprot-combined-esm3b-faesm-faiss.index
 
 # The number of GPUs to use for the FAISS index search
 export FAISS_SEARCH_GPUS=3
@@ -15,7 +35,7 @@ export FAISS_SEARCH_GPUS=3
 export FAISS_SEARCH_PRECISION=ubinary
 
 # The faiss search algorithm to use [exact, ivf].
-export FAISS_SEARCH_ALGORITHM=exact
+export FAISS_SEARCH_ALGORITHM=ivf
 
 # The number of clusters for the IVF index. 
 # set to nearest power of 2 of sqrt(250M) 
@@ -47,3 +67,7 @@ export ENCODER_DATALOADER_BATCH_SIZE=128
 
 # The number of data workers for the encoder model
 export ENCODER_DATALOADER_NUM_DATA_WORKERS=8
+
+# ========================================
+
+uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory

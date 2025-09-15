@@ -1,8 +1,8 @@
-import time
 from typing import Self
 from functools import lru_cache
-#from .config import get_settings
-#from .config import LLMHomologyApiSettings
+
+# from .config import get_settings
+# from .config import LLMHomologyApiSettings
 from pydantic import BaseModel, Field
 from pydantic import model_validator
 from natsort import natsorted
@@ -10,12 +10,11 @@ from protein_search_evals.embed import get_encoder
 from protein_search_evals.search import FaissIndex
 from protein_search_evals.search import Retriever
 from pydantic_settings import BaseSettings
-from functools import lru_cache
-from pydantic import Field
 from typing import Literal
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+
 
 class LLMHomologyApiSettings(BaseSettings):
     """Settings for the LLM Homology API taken from the environment"""
@@ -28,11 +27,11 @@ class LLMHomologyApiSettings(BaseSettings):
     MAX_PROTEINS_PER_REQUEST: int = 500
 
     MAX_REQUEST_SIZE: int = 2805000  # Not yet implemented
-    #VERSION: str
-    #ROOT_PATH: str
-    #AUTH_URL: str
+    # VERSION: str
+    # ROOT_PATH: str
+    # AUTH_URL: str
     ADMIN_ROLES: list = ["LLMHomologyAdmin"]
-    #VCS_REF: str
+    # VCS_REF: str
 
     # The similarity search configuration
     FAISS_SEARCH_GPUS: int = Field(
@@ -57,8 +56,7 @@ class LLMHomologyApiSettings(BaseSettings):
     )
     FAISS_SEARCH_IVF_NPROBE: int = Field(
         default=8,
-        description="The number of clusters to probe for each search in the "
-        "IVF index.",
+        description="The number of clusters to probe for each search in the IVF index.",
     )
     FAISS_SEARCH_IVF_MAX_TRAIN_SIZE: int = Field(
         default=1_000_000,
@@ -114,6 +112,7 @@ class LLMHomologyApiSettings(BaseSettings):
 @lru_cache(maxsize=None)
 def get_settings() -> LLMHomologyApiSettings:
     return LLMHomologyApiSettings()
+
 
 class SequenceModel(BaseModel):
     """The model for a sequence."""
@@ -207,6 +206,7 @@ def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriev
         search_gpus = 0
     else:
         search_gpus = list(range(1, settings.FAISS_SEARCH_GPUS + 1))
+        # NOTE: GPUs are not used for search if IVF and binary embeddings are used.
 
     # Print the GPU configuration
     print("Encoder GPU: 0")
@@ -260,37 +260,32 @@ def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriev
 def search_impl(query: SearchRequest) -> SearchResponse:
     """The search implementation."""
     # Get the cached retriever, or initialize it if it doesn't exist
-    init_time = time.time()
     retriever, all_uniprot_ids = initialize_search()
-    print(f'Initialization time: {time.time() - init_time}')
-    
-    start_total_time = time.time()
 
     # Collect the query sequences
     query_sequences = [x.sequence for x in query.query_sequences]
 
     # Perform the search
-    search_start = time.time()
     results, query_embeddings = retriever.search(
         query=query_sequences,
         top_k=query.max_hits,
         score_threshold=query.similarity_threshold,
     )
-    print(f'search results in {time.time() - search_start}')
-    print(query_embeddings[0])
+
     # Convert query_embeddings to list[list[float]]
     if query.return_query_embeddings:
         query_embeddings = query_embeddings.tolist()
 
     # Loop over each query sequence and collect the hits, embeddings, and scores
-    loop_start = time.time()
     all_hits = []
-    for indices, scores, q_embedding, query_sequence in tqdm(zip(
-        results.total_indices,
-        results.total_scores,
-        query_embeddings,
-        query.query_sequences,
-    )):
+    for indices, scores, q_embedding, query_sequence in tqdm(
+        zip(
+            results.total_indices,
+            results.total_scores,
+            query_embeddings,
+            query.query_sequences,
+        )
+    ):
         # Only return the query embedding if requested
         query_embedding = q_embedding if query.return_query_embeddings else []
 
@@ -309,7 +304,7 @@ def search_impl(query: SearchRequest) -> SearchResponse:
             continue
 
         # Get the Uniprot IDs for the hits
-        #hit_ids = retriever.get(indices, key="tags")
+        # hit_ids = retriever.get(indices, key="tags")
         hit_ids = all_uniprot_ids[indices]
 
         # Load the embeddings for the hits from disk if requested
@@ -351,11 +346,9 @@ def search_impl(query: SearchRequest) -> SearchResponse:
                 total_hits=len(hits) + 1,
             )
         )
-    
-    print(f'Loop time: {time.time() - loop_start}')
-    print(f'Total time: {time.time() - start_total_time}')
-    print(f'Num query sequences: {len(query_sequences)}')
+
     return SearchResponse(hits=all_hits)
+
 
 def single_test() -> None:
     # A Quick Test
@@ -377,15 +370,15 @@ def single_test() -> None:
 
     response = search_impl(query)
 
-    #print(response)
+    print(response)
 
 
 def genome_test() -> None:
     import json
     from protein_search_evals.utils import read_fasta
 
-    fasta_file = '/scratch/abrace/data/ecoli/UP000000625_83333.fasta'
-    results_file = '/scratch/abrace/data/ecoli/exact_vs_ivf/UP000000625_83333-search-results-trembl-esm3b-faesm-bs128-ubinary-ivf-nprobe256-topk100.json'
+    fasta_file = "/scratch/abrace/data/ecoli/UP000000625_83333.fasta"
+    results_file = "/scratch/abrace/data/ecoli/exact_vs_ivf/UP000000625_83333-search-results-trembl-esm3b-faesm-bs128-ubinary-ivf-nprobe256-topk100.json"
 
     sequences = read_fasta(fasta_file)
     query_sequences = [{"id": seq.tag, "sequence": seq.sequence} for seq in sequences]
@@ -403,11 +396,12 @@ def genome_test() -> None:
 
     response = search_impl(query)
 
-    with open(results_file, 'w') as fp:
+    with open(results_file, "w") as fp:
         json.dump(response.model_dump(), fp, indent=2)
+
 
 if __name__ == "__main__":
     single_test()
     single_test()
-    #genome_test()
-    #genome_test()
+    # genome_test()
+    # genome_test()
