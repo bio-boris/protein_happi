@@ -1,8 +1,6 @@
 from typing import Self
 from functools import lru_cache
 
-# from .config import get_settings
-# from .config import LLMHomologyApiSettings
 from pydantic import BaseModel, Field
 from pydantic import model_validator
 from natsort import natsorted
@@ -26,12 +24,18 @@ class LLMHomologyApiSettings(BaseSettings):
     # The maximum number of protein sequences allowed in a single request
     MAX_PROTEINS_PER_REQUEST: int = 500
 
-    MAX_REQUEST_SIZE: int = 2805000  # Not yet implemented
-    # VERSION: str
-    # ROOT_PATH: str
-    # AUTH_URL: str
+    # The maximum request size
+    MAX_REQUEST_SIZE: int = 2805000  # TODO: Not yet implemented
+    # The version of the API
+    VERSION: str
+    # The root path of the API
+    ROOT_PATH: str
+    # The authentication URL
+    AUTH_URL: str
+    # The admin roles
     ADMIN_ROLES: list = ["LLMHomologyAdmin"]
-    # VCS_REF: str
+    # The version control system reference
+    VCS_REF: str
 
     # The similarity search configuration
     FAISS_SEARCH_GPUS: int = Field(
@@ -208,9 +212,35 @@ def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriev
         search_gpus = list(range(1, settings.FAISS_SEARCH_GPUS + 1))
         # NOTE: GPUs are not used for search if IVF and binary embeddings are used.
 
-    # Print the GPU configuration
+    # Print the configuration
     print("Encoder GPU: 0")
     print(f"Faiss Search GPUs: {search_gpus}")
+    print("NOTE: GPUs are not used for search if IVF and binary embeddings are used.")
+    print(f"Faiss Search Algorithm: {settings.FAISS_SEARCH_ALGORITHM}")
+    print(f"Faiss Search Precision: {settings.FAISS_SEARCH_PRECISION}")
+    print(f"Faiss Search IVF NLIST: {settings.FAISS_SEARCH_IVF_NLIST}")
+    print(f"Faiss Search IVF NPROBE: {settings.FAISS_SEARCH_IVF_NPROBE}")
+    print(
+        f"Faiss Search IVF MAX TRAIN SIZE: {settings.FAISS_SEARCH_IVF_MAX_TRAIN_SIZE}"
+    )
+    print(
+        f"Faiss Search NUM QUANTIZATION WORKERS: {settings.FAISS_NUM_QUANTIZATION_WORKERS}"
+    )
+    print(f"Faiss Search SCALE MODE: {settings.FAISS_SEARCH_SCALE_MODE}")
+    print(f"Faiss Search Dataset Chunk Dir: {settings.FAISS_DATASET_CHUNK_DIR}")
+    print(f"Faiss Search Embedding Dataset Dir: {settings.FAISS_EMBEDDING_DATASET_DIR}")
+    print(f"Faiss Search Index Path: {settings.FAISS_INDEX_PATH}")
+    print(f"Faiss Search Encoder Name: {settings.ENCODER_NAME}")
+    print(
+        f"Faiss Search Encoder Pretrained Model Name Or Path: {settings.ENCODER_PRETRAINED_MODEL_NAME_OR_PATH}"
+    )
+    print(f"Faiss Search Encoder Enable FAESM: {settings.ENCODER_ENABLE_FAESM}")
+    print(
+        f"Faiss Search Encoder Dataloader Batch Size: {settings.ENCODER_DATALOADER_BATCH_SIZE}"
+    )
+    print(
+        f"Faiss Search Encoder Dataloader Num Data Workers: {settings.ENCODER_DATALOADER_NUM_DATA_WORKERS}"
+    )
 
     # If specified, collect all subdirectories within the chunk directory
     if settings.FAISS_DATASET_CHUNK_DIR is None:

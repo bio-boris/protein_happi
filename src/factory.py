@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .config import get_settings
+from .search import get_settings
 from .search import search_impl
 from .search import initialize_search
 from .search import SearchRequest
