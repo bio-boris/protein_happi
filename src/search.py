@@ -189,13 +189,17 @@ class SearchResponse(BaseModel):
 
 
 @lru_cache(maxsize=None)
-def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriever:
+def initialize_search(
+    settings: LLMHomologyApiSettings | None = None,
+) -> tuple[Retriever, np.ndarray]:
     """Initialize the retriever.
 
     Returns
     -------
     Retriever
         The initialized retriever.
+    np.ndarray
+        The Uniprot IDs for all the embeddings in the faiss index.
     """
     # Load the static configuration
     if settings is None:
