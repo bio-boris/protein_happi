@@ -226,7 +226,6 @@ def initialize_search(settings: LLMHomologyApiSettings | None = None) -> Retriev
     print(
         f"Faiss Search NUM QUANTIZATION WORKERS: {settings.FAISS_NUM_QUANTIZATION_WORKERS}"
     )
-    print(f"Faiss Search SCALE MODE: {settings.FAISS_SEARCH_SCALE_MODE}")
     print(f"Faiss Search Dataset Chunk Dir: {settings.FAISS_DATASET_CHUNK_DIR}")
     print(f"Faiss Search Embedding Dataset Dir: {settings.FAISS_EMBEDDING_DATASET_DIR}")
     print(f"Faiss Search Index Path: {settings.FAISS_INDEX_PATH}")
