@@ -1,4 +1,5 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, HTTPException
+import asyncio
 
 from .config import get_settings
 from .search import submit_search_job, get_job_status, background_search_task
@@ -19,10 +20,11 @@ def create_app(settings=None) -> FastAPI:
         return {"message": "Hello World"}
 
     @app.post("/search", response_model=JobSubmissionResponse)
-    async def search(query: SearchRequest, background_tasks: BackgroundTasks) -> JobSubmissionResponse:
+    async def search(query: SearchRequest) -> JobSubmissionResponse:
         """Submit a search job and return the job ID."""
         job_response = submit_search_job(query)
-        background_tasks.add_task(background_search_task, job_response.job_id)
+        # Create asyncio task instead of using BackgroundTasks
+        asyncio.create_task(background_search_task(job_response.job_id))
         return job_response
 
     @app.get("/job/{job_id}", response_model=JobStatusResponse)

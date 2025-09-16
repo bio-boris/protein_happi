@@ -9,6 +9,7 @@ import threading
 import requests
 import subprocess
 import json
+import asyncio
 from contextlib import contextmanager
 
 sys.path.insert(0, '/home/runner/work/protein_happi/protein_happi')
@@ -47,7 +48,7 @@ def test_imports_and_models():
     app = create_app()
     print("  ✅ Models and app creation successful")
 
-def test_job_lifecycle():
+async def test_job_lifecycle():
     """Test the complete job lifecycle."""
     print("🔄 Testing job lifecycle...")
     
@@ -73,8 +74,8 @@ def test_job_lifecycle():
     assert status.status == JobStatus.PENDING
     print(f"  ✅ Job {job_id[:8]}... created with PENDING status")
     
-    # Run background task
-    background_search_task(job_id)
+    # Run async background task
+    await background_search_task(job_id)
     
     # Check final status
     final_status = get_job_status(job_id)
@@ -186,7 +187,7 @@ def test_api_endpoints():
         assert response.status_code == 404
         print("  ✅ Invalid job ID returns 404")
 
-def test_concurrent_jobs():
+async def test_concurrent_jobs():
     """Test multiple concurrent jobs."""
     print("🔀 Testing concurrent jobs...")
     
@@ -208,16 +209,9 @@ def test_concurrent_jobs():
     
     print(f"  ✅ Created {len(job_ids)} concurrent jobs")
     
-    # Run background tasks concurrently
-    threads = []
-    for job_id in job_ids:
-        thread = threading.Thread(target=background_search_task, args=(job_id,))
-        threads.append(thread)
-        thread.start()
-    
-    # Wait for all to complete
-    for thread in threads:
-        thread.join(timeout=5)
+    # Run background tasks concurrently using asyncio
+    tasks = [background_search_task(job_id) for job_id in job_ids]
+    await asyncio.gather(*tasks)
     
     # Verify all completed
     completed_count = 0
@@ -228,33 +222,33 @@ def test_concurrent_jobs():
     
     print(f"  ✅ {completed_count}/{len(job_ids)} jobs completed successfully")
 
-def run_all_tests():
+async def run_all_tests():
     """Run all tests in sequence."""
-    print("🧪 Running comprehensive tests for async search implementation\n")
+    print("🧪 Running comprehensive tests for async search implementation with asyncio\n")
     
     try:
         test_imports_and_models()
         print()
         
-        test_job_lifecycle()
+        await test_job_lifecycle()
         print()
         
         test_api_endpoints()
         print()
         
-        test_concurrent_jobs()
+        await test_concurrent_jobs()
         print()
         
         print("🎉 ALL TESTS PASSED! 🎉")
         print("\nImplementation Summary:")
-        print("✅ Job-based async search system")
-        print("✅ Background task execution")
+        print("✅ Job-based async search system with asyncio")
+        print("✅ Background task execution using asyncio.create_task")
         print("✅ Job status tracking and persistence")
         print("✅ RESTful API endpoints")
         print("✅ Error handling and validation")
-        print("✅ Concurrent job support")
+        print("✅ Concurrent job support with asyncio.gather")
         print("✅ Mock implementation for testing")
-        print("\nThe async search API is ready for production use!")
+        print("\nThe async search API with asyncio is ready for production use!")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")
@@ -265,5 +259,5 @@ def run_all_tests():
     return True
 
 if __name__ == "__main__":
-    success = run_all_tests()
+    success = asyncio.run(run_all_tests())
     sys.exit(0 if success else 1)

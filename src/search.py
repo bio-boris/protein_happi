@@ -1,6 +1,7 @@
 from typing import Self, Optional
 import uuid
 import time
+import asyncio
 from enum import Enum
 import numpy as np
 from functools import lru_cache
@@ -337,7 +338,7 @@ def search_impl(query: SearchRequest) -> SearchResponse:
     return SearchResponse(hits=all_hits)
 
 
-def background_search_task(job_id: str) -> None:
+async def background_search_task(job_id: str) -> None:
     """Background task to perform the search and update job status."""
     job_data = get_job(job_id)
     if not job_data:
