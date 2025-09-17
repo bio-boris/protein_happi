@@ -120,6 +120,8 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
             return SearchResultResponse(status="done", result=result)
         # If the result is not found, return an error
         except Exception as e:
+            # Delete the future from the dictionary (to avoid memory leaks)
+            results.pop(request.job_id, None)
             return SearchResultResponse(status="failed", error=str(e))
 
     return app
