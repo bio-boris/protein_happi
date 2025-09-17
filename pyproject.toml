@@ -2,8 +2,8 @@
 name = "protein-happi"
 version = "0.1.0"
 authors = [
-    { name = "Alexander Brace", email = "abrace@anl.gov" },
-    { name = "Boris Sadkhin", email = "bsadkhin@anl.gov" },
+    {name = "Alexander Brace"},
+    {name = "Boris Sadkhin"},
 ]
 description = "AI homology detection."
 readme = "README.md"
