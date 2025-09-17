@@ -14,9 +14,19 @@ dependencies = [
     "protein_search_evals==0.0.5",
     "uvicorn>=0.34.0",
     "faiss-gpu-cu12==1.10.0",
-    "flash-attn",
-    "faesm[flash_attn]",
+    "flash-attn==2.8.3",
+    "faesm[flash-attn]==0.1.1",
+    "torch>=2.6.0",  # As per protein_search_evals
 ]
 
 [tool.uv.sources]
 protein_search_evals = { git = "https://github.com/braceal/protein_search_evals.git" }
+
+dependencies = [
+
+    "flash-attn>=2.8.3",
+    # ... other deps
+]
+
+[tool.uv.extra-build-dependencies]
+flash-attn = ["torch>=2.6.0"]  # As per protein_search_evals
