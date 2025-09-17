@@ -95,7 +95,7 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
         return SearchJobResponse(job_id=job_id)
 
     # Add the result endpoint which returns the result of the search given the job ID
-    @app.get("/result", response_model=SearchResultResponse)
+    @app.post("/result", response_model=SearchResultResponse)
     async def get_result(request: SearchResultRequest) -> SearchResultResponse:
         # Get the future result from the dictionary
         future = results.get(request.job_id)
