@@ -1,12 +1,121 @@
 from typing import Self
-import numpy as np
 from functools import lru_cache
-from .config import get_settings
+
 from pydantic import BaseModel, Field
 from pydantic import model_validator
+from natsort import natsorted
 from protein_search_evals.embed import get_encoder
 from protein_search_evals.search import FaissIndex
 from protein_search_evals.search import Retriever
+from pydantic_settings import BaseSettings
+from typing import Literal
+from pathlib import Path
+from tqdm import tqdm
+import numpy as np
+
+
+class LLMHomologyApiSettings(BaseSettings):
+    """Settings for the LLM Homology API taken from the environment"""
+
+    # The maximum length of the protein sequence header
+    MAX_RESIDUE_HEADER_LENGTH: int = 100
+    # The maximum number of residues allowed in a single protein sequence
+    MAX_RESIDUE_COUNT: int = 5000
+    # The maximum number of protein sequences allowed in a single request
+    MAX_PROTEINS_PER_REQUEST: int = 500
+
+    # The maximum request size
+    MAX_REQUEST_SIZE: int = 2805000  # TODO: Not yet implemented
+    # The version of the API
+    VERSION: str
+    # The root path of the API
+    ROOT_PATH: str
+    # The authentication URL
+    AUTH_URL: str
+    # The admin roles
+    ADMIN_ROLES: list = ["LLMHomologyAdmin"]
+    # The version control system reference
+    VCS_REF: str
+
+    # The similarity search configuration
+    FAISS_SEARCH_GPUS: int = Field(
+        default=0,
+        ge=0,
+        description="The number of GPUs to use for the similarity search. "
+        "Using 0 will place the faiss index on the same GPU as the encoder. "
+        "Using more than 0 will place the faiss index on the next available GPUs. "
+        "The GPU placement is relative to CUDA_VISIBLE_DEVICES.",
+    )
+    FAISS_SEARCH_PRECISION: Literal["float32", "ubinary"] = Field(
+        default="ubinary",
+        description="The precision of the faiss index search [float32, ubinary].",
+    )
+    FAISS_SEARCH_ALGORITHM: Literal["exact", "ivf"] = Field(
+        default="exact",
+        description="The faiss search algorithm to use [exact, ivf].",
+    )
+    FAISS_SEARCH_IVF_NLIST: int = Field(
+        default=512,
+        description="The number of clusters for the IVF index.",
+    )
+    FAISS_SEARCH_IVF_NPROBE: int = Field(
+        default=8,
+        description="The number of clusters to probe for each search in the IVF index.",
+    )
+    FAISS_SEARCH_IVF_MAX_TRAIN_SIZE: int = Field(
+        default=1_000_000,
+        description="The maximum number of embeddings to use for training "
+        "the IVF index.",
+    )
+    FAISS_EMBEDDING_DATASET_DIR: Path = Field(
+        ...,
+        description="The directory containing the Arrow embedding dataset.",
+    )
+    FAISS_INDEX_PATH: Path = Field(
+        ...,
+        description="The path to the faiss index file.",
+    )
+    FAISS_DATASET_CHUNK_DIR: Path | None = Field(
+        default=None,
+        description="The directory containing the chunked embeddings "
+        "database for building the FAISS index",
+    )
+    FAISS_NUM_QUANTIZATION_WORKERS: int = Field(
+        default=1,
+        ge=1,
+        description="The number of CPU workers to use for quantization "
+        "(reads the chunked embeddings database)",
+    )
+    ENCODER_NAME: Literal["esm2", "esmc", "prottrans"] = Field(
+        default="esm2",
+        description="The name of the encoder to use.",
+    )
+    ENCODER_PRETRAINED_MODEL_NAME_OR_PATH: str = Field(
+        default="facebook/esm2_t33_650M_UR50D",
+        description="The encoder model id.",
+    )
+    ENCODER_ENABLE_FAESM: bool = Field(
+        default=False,
+        description="Use the flash-attention implementation for ESM2.",
+    )
+    ENCODER_DATALOADER_BATCH_SIZE: int = Field(
+        default=8,
+        ge=1,
+        description="The encoder dataloader batch size.",
+    )
+    ENCODER_DATALOADER_NUM_DATA_WORKERS: int = Field(
+        default=4,
+        ge=1,
+        description="The encoder dataloader number of data worker processes.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+@lru_cache(maxsize=None)
+def get_settings() -> LLMHomologyApiSettings:
+    return LLMHomologyApiSettings()
 
 
 class SequenceModel(BaseModel):
@@ -80,40 +189,81 @@ class SearchResponse(BaseModel):
 
 
 @lru_cache(maxsize=None)
-def _initialize_search() -> tuple[Retriever, np.ndarray]:
-    """Initialize the retriever and load the Uniprot IDs.
+def initialize_search(
+    settings: LLMHomologyApiSettings | None = None,
+) -> tuple[Retriever, np.ndarray]:
+    """Initialize the retriever.
 
     Returns
     -------
     Retriever
         The initialized retriever.
     np.ndarray
-        The Uniprot IDs.
+        The Uniprot IDs for all the embeddings in the faiss index.
     """
     # Load the static configuration
-    settings = get_settings()
+    if settings is None:
+        settings = get_settings()
 
     # The encoder model always gets placed on GPU:0 relative
     # to CUDA_VISIBLE_DEVICES. If `gpus` > 0, then the faiss index
     # will be placed on the next available GPUs (relative to
     # CUDA_VISIBLE_DEVICES). Otherwise, the faiss index will share
     # the same GPU as the encoder.
-    if settings.SEARCH_GPUS == 0:
+    if settings.FAISS_SEARCH_GPUS == 0:
         search_gpus = 0
     else:
-        search_gpus = list(range(1, settings.SEARCH_GPUS + 1))
+        search_gpus = list(range(1, settings.FAISS_SEARCH_GPUS + 1))
+        # NOTE: GPUs are not used for search if IVF and binary embeddings are used.
 
-    # Print the GPU configuration
+    # Print the configuration
     print("Encoder GPU: 0")
     print(f"Faiss Search GPUs: {search_gpus}")
+    print("NOTE: GPUs are not used for search if IVF and binary embeddings are used.")
+    print(f"Faiss Search Algorithm: {settings.FAISS_SEARCH_ALGORITHM}")
+    print(f"Faiss Search Precision: {settings.FAISS_SEARCH_PRECISION}")
+    print(f"Faiss Search IVF NLIST: {settings.FAISS_SEARCH_IVF_NLIST}")
+    print(f"Faiss Search IVF NPROBE: {settings.FAISS_SEARCH_IVF_NPROBE}")
+    print(
+        f"Faiss Search IVF MAX TRAIN SIZE: {settings.FAISS_SEARCH_IVF_MAX_TRAIN_SIZE}"
+    )
+    print(
+        f"Faiss Search NUM QUANTIZATION WORKERS: {settings.FAISS_NUM_QUANTIZATION_WORKERS}"
+    )
+    print(f"Faiss Search Dataset Chunk Dir: {settings.FAISS_DATASET_CHUNK_DIR}")
+    print(f"Faiss Search Embedding Dataset Dir: {settings.FAISS_EMBEDDING_DATASET_DIR}")
+    print(f"Faiss Search Index Path: {settings.FAISS_INDEX_PATH}")
+    print(f"Faiss Search Encoder Name: {settings.ENCODER_NAME}")
+    print(
+        f"Faiss Search Encoder Pretrained Model Name Or Path: {settings.ENCODER_PRETRAINED_MODEL_NAME_OR_PATH}"
+    )
+    print(f"Faiss Search Encoder Enable FAESM: {settings.ENCODER_ENABLE_FAESM}")
+    print(
+        f"Faiss Search Encoder Dataloader Batch Size: {settings.ENCODER_DATALOADER_BATCH_SIZE}"
+    )
+    print(
+        f"Faiss Search Encoder Dataloader Num Data Workers: {settings.ENCODER_DATALOADER_NUM_DATA_WORKERS}"
+    )
+
+    # If specified, collect all subdirectories within the chunk directory
+    if settings.FAISS_DATASET_CHUNK_DIR is None:
+        dataset_chunk_paths = None
+    else:
+        dataset_chunk_paths = natsorted(settings.FAISS_DATASET_CHUNK_DIR.glob("*"))
 
     # Initialize the faiss index
     faiss_index = FaissIndex(
-        dataset_dir=settings.EMBEDDING_DATASET_DIR,
+        dataset_dir=settings.FAISS_EMBEDDING_DATASET_DIR,
         faiss_index_path=settings.FAISS_INDEX_PATH,
-        precision=settings.SEARCH_PRECISION,
-        search_algorithm="exact",
+        dataset_chunk_paths=dataset_chunk_paths,
+        precision=settings.FAISS_SEARCH_PRECISION,
+        search_algorithm=settings.FAISS_SEARCH_ALGORITHM,
+        ivf_nlist=settings.FAISS_SEARCH_IVF_NLIST,
+        ivf_nprobe=settings.FAISS_SEARCH_IVF_NPROBE,
+        ivf_max_train_size=settings.FAISS_SEARCH_IVF_MAX_TRAIN_SIZE,
+        num_quantization_workers=settings.FAISS_NUM_QUANTIZATION_WORKERS,
         search_gpus=search_gpus,
+        scale_mode=True,
     )
 
     # Initialize the encoder
@@ -121,17 +271,21 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
         kwargs={
             "name": settings.ENCODER_NAME,
             "pretrained_model_name_or_path": settings.ENCODER_PRETRAINED_MODEL_NAME_OR_PATH,
+            "enable_faesm": settings.ENCODER_ENABLE_FAESM,
             "dataloader_batch_size": settings.ENCODER_DATALOADER_BATCH_SIZE,
             "dataloader_num_data_workers": settings.ENCODER_DATALOADER_NUM_DATA_WORKERS,
+            "verbose": True,
         }
     )
 
     # Initialize the retriever
     retriever = Retriever(faiss_index=faiss_index, encoder=encoder)
 
-    # Preload all the Uniprot IDs to avoid disk reads during the search
+    print("Preloading Uniprot IDs...")
     num_uniprot_ids = np.arange(len(retriever.faiss_index.dataset))
-    all_uniprot_ids = retriever.get(num_uniprot_ids, key="tags")
+    all_uniprot_ids = retriever.get(num_uniprot_ids, key="tags", scale_mode=False)
+
+    print("Search initialized.")
 
     return retriever, all_uniprot_ids
 
@@ -139,7 +293,7 @@ def _initialize_search() -> tuple[Retriever, np.ndarray]:
 def search_impl(query: SearchRequest) -> SearchResponse:
     """The search implementation."""
     # Get the cached retriever, or initialize it if it doesn't exist
-    retriever, all_uniprot_ids = _initialize_search()
+    retriever, all_uniprot_ids = initialize_search()
 
     # Collect the query sequences
     query_sequences = [x.sequence for x in query.query_sequences]
@@ -157,11 +311,13 @@ def search_impl(query: SearchRequest) -> SearchResponse:
 
     # Loop over each query sequence and collect the hits, embeddings, and scores
     all_hits = []
-    for indices, scores, q_embedding, query_sequence in zip(
-        results.total_indices,
-        results.total_scores,
-        query_embeddings,
-        query.query_sequences,
+    for indices, scores, q_embedding, query_sequence in tqdm(
+        zip(
+            results.total_indices,
+            results.total_scores,
+            query_embeddings,
+            query.query_sequences,
+        )
     ):
         # Only return the query embedding if requested
         query_embedding = q_embedding if query.return_query_embeddings else []
@@ -181,6 +337,7 @@ def search_impl(query: SearchRequest) -> SearchResponse:
             continue
 
         # Get the Uniprot IDs for the hits
+        # hit_ids = retriever.get(indices, key="tags")
         hit_ids = all_uniprot_ids[indices]
 
         # Load the embeddings for the hits from disk if requested
@@ -224,3 +381,60 @@ def search_impl(query: SearchRequest) -> SearchResponse:
         )
 
     return SearchResponse(hits=all_hits)
+
+
+def single_test() -> None:
+    # A Quick Test
+    data = {
+        "query_sequences": [
+            {
+                "id": "string",
+                "sequence": "MPETTNLPAGPAGPDRPDSPDSPDSPDSPDRRLKGRGIPDAPGNRFERLHVEIDVGAMAEMQTVDPEWEAAPPRTVFYRDETQSIVSTNASPDLNFDASLNPYRGCEHGCSYCYARPYHEYLGFNSGIDFETRILVKENAGALLEKELGSKKWKPKTLVCSGVTDPYQPVEKKLKITRRCLEVLEHFRNPVGIITKNHLVTRDIDHLGVLAREHSAACVYISITTLDRNLAKVLEPRASSPSFRLRAVKELSEAGIPVGVSLGPTIPGLNDHEMPAILEAASDHGARTAFYILLRLPHGVSKMFSDWLGCHFPQRKEKVLGRLRELRGGKLNDSRFGVRFKGEGPLASEIESLFRVSARKCGLHRAMPELSCAAFRRAAGGGQMELF",
+            }
+        ],
+        "similarity_threshold": 0,
+        "best_hit_only": False,
+        "max_hits": 5,
+        "return_query_embeddings": False,
+        "return_hit_embeddings": False,
+    }
+
+    query = SearchRequest(**data)
+
+    response = search_impl(query)
+
+    print(response)
+
+
+def genome_test() -> None:
+    import json
+    from protein_search_evals.utils import read_fasta
+
+    fasta_file = "/scratch/abrace/data/ecoli/UP000000625_83333.fasta"
+    results_file = "/scratch/abrace/data/ecoli/exact_vs_ivf/UP000000625_83333-search-results-trembl-esm3b-faesm-bs128-ubinary-ivf-nprobe256-topk100.json"
+
+    sequences = read_fasta(fasta_file)
+    query_sequences = [{"id": seq.tag, "sequence": seq.sequence} for seq in sequences]
+
+    data = {
+        "query_sequences": query_sequences,
+        "similarity_threshold": 0,
+        "best_hit_only": False,
+        "max_hits": 100,
+        "return_query_embeddings": False,
+        "return_hit_embeddings": False,
+    }
+
+    query = SearchRequest(**data)
+
+    response = search_impl(query)
+
+    with open(results_file, "w") as fp:
+        json.dump(response.model_dump(), fp, indent=2)
+
+
+if __name__ == "__main__":
+    single_test()
+    single_test()
+    # genome_test()
+    # genome_test()
