@@ -74,7 +74,9 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
 
     # Create the FastAPI app
     app = FastAPI(
-        title="Hello World API", lifespan=lifespan, root_path=settings.ROOT_PATH
+        title="AI Sequence Similarity Search API",
+        lifespan=lifespan,
+        root_path=settings.ROOT_PATH,
     )
 
     # Add the root endpoint
@@ -93,7 +95,7 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
         return SearchJobResponse(job_id=job_id)
 
     # Add the result endpoint which returns the result of the search given the job ID
-    @app.get("/result/{job_id}", response_model=SearchResultResponse)
+    @app.get("/result", response_model=SearchResultResponse)
     async def get_result(request: SearchResultRequest) -> SearchResultResponse:
         # Get the future result from the dictionary
         future = results.get(request.job_id)
@@ -108,11 +110,11 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
 
         # Try to get the result from the future
         try:
-            # If the result is found, delete the future from the dictionary
-            results.pop(request.job_id)
-
             # Get the result from the future
             result = future.result()
+
+            # If the result is found, delete the future from the dictionary
+            results.pop(request.job_id)
 
             # Return the result
             return SearchResultResponse(status="done", result=result)
