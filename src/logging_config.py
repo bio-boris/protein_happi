@@ -10,7 +10,8 @@ from typing import Optional
 def setup_logging(
     log_level: str = "INFO",
     log_dir: Optional[Path] = None,
-    service_name: str = "llm_homology_api"
+    service_name: str = "llm_homology_api",
+    force_flush: bool = True  # New parameter
 ) -> logging.Logger:
     """
     Set up logging configuration with both stdout and timestamped file output.
@@ -83,21 +84,67 @@ def setup_logging(
     logger.info(f"Logging initialized. Log file: {log_filename}")
     logger.info(f"Console log level: {log_level.upper()}")
     logger.info(f"File log level: DEBUG")
+    logger.info(f"Force flush enabled: {force_flush}")
+
+    # If force_flush is enabled, flush immediately
+    if force_flush:
+        for handler in logger.handlers:
+            handler.flush()
 
     return logger
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def flush_logger(logger_name: Optional[str] = None) -> None:
     """
-    Get a logger instance. If setup_logging hasn't been called,
-    this will return a basic logger.
+    Manually flush a specific logger or all loggers.
 
     Args:
-        name: Logger name. If None, returns the root service logger.
+        logger_name: Name of logger to flush. If None, flushes all loggers.
+    """
+    if logger_name:
+        logger = logging.getLogger(logger_name)
+        for handler in logger.handlers:
+            handler.flush()
+    else:
+        # Flush all loggers
+        import sys
 
-    Returns:
-        Logger instance
+        # Flush all named loggers
+        for name in logging.Logger.manager.loggerDict:
+            logger = logging.getLogger(name)
+            for handler in logger.handlers:
+                handler.flush()
+
+        # Flush root logger
+        for handler in logging.root.handlers:
+            handler.flush()
+
+        # Flush standard streams
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+
+def get_logger(name: Optional[str] = None) -> logging.Logger:
+    """
+    Get a logger instance that works with uvicorn.
+    Auto-configures basic logging if none exists.
     """
     if name is None:
         name = "llm_homology_api"
-    return logging.getLogger(name)
+
+    logger = logging.getLogger(name)
+
+    # If no handlers exist anywhere, set up basic logging
+    if not logger.handlers and not logger.parent.handlers and not logging.root.handlers:
+        # Set up basic console logging
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+
+        # Add to root logger so all loggers inherit it
+        logging.root.addHandler(handler)
+        logging.root.setLevel(logging.INFO)
+
+        logger.info("Auto-configured basic logging")
+
+    return logger
