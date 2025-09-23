@@ -15,6 +15,7 @@ from .search import SearchResponse
 from .search import LLMHomologyApiSettings
 from .search import search_impl
 from .search import initialize_search
+from .logging_config import get_logger
 
 # NOTE: This implementation stores user job requests in a in-memory queue
 # and processes them in a fifo manner. The results are stored in a dictionary
@@ -28,12 +29,16 @@ results: dict[str, asyncio.Future] = {}  # job_id -> Future
 
 
 async def worker() -> None:
+    logger = get_logger("factory.worker")
     while True:
         job_id, func, args, kwargs, future = await job_queue.get()
         try:
+            logger.debug("Processing job %s", job_id)
             result = await func(*args, **kwargs)
             future.set_result(result)
+            logger.debug("Job %s completed successfully", job_id)
         except Exception as e:
+            logger.error("Job %s failed with error: %s", job_id, str(e))
             future.set_exception(e)
         finally:
             job_queue.task_done()
@@ -41,14 +46,22 @@ async def worker() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger = get_logger("factory.lifespan")
+    logger.info("Starting application lifecycle")
+    
     # Start the worker thread to handle the jobs
+    logger.info("Starting worker task")
     asyncio.create_task(worker())
 
     # Initialize the search which loads the encoder model and
     # faiss index to GPU memory. This is done once at startup.
+    logger.info("Initializing search system")
     initialize_search()
+    logger.info("Application startup complete")
 
     yield
+    
+    logger.info("Application shutdown complete")
 
 
 class SearchJobResponse(BaseModel):
@@ -67,10 +80,13 @@ class SearchResultResponse(BaseModel):
 
 def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
     """App factory function."""
+    logger = get_logger("factory")
 
     # Load the settings
     if settings is None:
         settings = get_settings()
+    
+    logger.info("Creating FastAPI application")
 
     # Create the FastAPI app
     app = FastAPI(
@@ -87,25 +103,30 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
     # Add the search endpoint which returns a job ID and puts the job in the queue
     @app.post("/search", response_model=SearchJobResponse)
     async def search(request: SearchRequest) -> SearchJobResponse:
+        logger.debug("Received search request")
         loop = asyncio.get_event_loop()
         future = loop.create_future()
         job_id = str(uuid.uuid4())
         results[job_id] = future
         await job_queue.put((job_id, search_impl, (request,), {}, future))
+        logger.info("Created search job with ID: %s", job_id)
         return SearchJobResponse(job_id=job_id)
 
     # Add the result endpoint which returns the result of the search given the job ID
     @app.post("/result", response_model=SearchResultResponse)
     async def get_result(request: SearchResultRequest) -> SearchResultResponse:
+        logger.debug("Checking result for job ID: %s", request.job_id)
         # Get the future result from the dictionary
         future = results.get(request.job_id)
 
         # If the future is not found, return an error
         if future is None:
+            logger.warning("Job not found: %s", request.job_id)
             return SearchResultResponse(status="error", error="job not found")
 
         # If the future is not done, return a pending status
         if not future.done():
+            logger.debug("Job still pending: %s", request.job_id)
             return SearchResultResponse(status="pending")
 
         # Try to get the result from the future
@@ -115,13 +136,16 @@ def create_app(settings: LLMHomologyApiSettings | None = None) -> FastAPI:
 
             # If the result is found, delete the future from the dictionary
             results.pop(request.job_id)
-
+            
+            logger.info("Job completed successfully: %s", request.job_id)
             # Return the result
             return SearchResultResponse(status="done", result=result)
         # If the result is not found, return an error
         except Exception as e:
             # Delete the future from the dictionary (to avoid memory leaks)
             results.pop(request.job_id, None)
+            logger.error("Job failed: %s, error: %s", request.job_id, str(e))
             return SearchResultResponse(status="failed", error=str(e))
 
+    logger.info("FastAPI application created successfully")
     return app

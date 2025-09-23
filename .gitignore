@@ -8,3 +8,5 @@ deploy.cfg
 .coverage
 test/test_temp/
 protein_search_evals
+# Log files
+protein_happi_*.log

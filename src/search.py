@@ -14,6 +14,8 @@ from tqdm import tqdm
 import numpy as np
 import time
 
+from .logging_config import get_logger
+
 
 class LLMHomologyApiSettings(BaseSettings):
     """Settings for the LLM Homology API taken from the environment"""
@@ -202,6 +204,8 @@ def initialize_search(
     np.ndarray
         The Uniprot IDs for all the embeddings in the faiss index.
     """
+    logger = get_logger("search")
+    
     # Load the static configuration
     if settings is None:
         settings = get_settings()
@@ -217,34 +221,25 @@ def initialize_search(
         search_gpus = list(range(1, settings.FAISS_SEARCH_GPUS + 1))
         # NOTE: GPUs are not used for search if IVF and binary embeddings are used.
 
-    # Print the configuration
-    print("Encoder GPU: 0")
-    print(f"Faiss Search GPUs: {search_gpus}")
-    print("NOTE: GPUs are not used for search if IVF and binary embeddings are used.")
-    print(f"Faiss Search Algorithm: {settings.FAISS_SEARCH_ALGORITHM}")
-    print(f"Faiss Search Precision: {settings.FAISS_SEARCH_PRECISION}")
-    print(f"Faiss Search IVF NLIST: {settings.FAISS_SEARCH_IVF_NLIST}")
-    print(f"Faiss Search IVF NPROBE: {settings.FAISS_SEARCH_IVF_NPROBE}")
-    print(
-        f"Faiss Search IVF MAX TRAIN SIZE: {settings.FAISS_SEARCH_IVF_MAX_TRAIN_SIZE}"
-    )
-    print(
-        f"Faiss Search NUM QUANTIZATION WORKERS: {settings.FAISS_NUM_QUANTIZATION_WORKERS}"
-    )
-    print(f"Faiss Search Dataset Chunk Dir: {settings.FAISS_DATASET_CHUNK_DIR}")
-    print(f"Faiss Search Embedding Dataset Dir: {settings.FAISS_EMBEDDING_DATASET_DIR}")
-    print(f"Faiss Search Index Path: {settings.FAISS_INDEX_PATH}")
-    print(f"Faiss Search Encoder Name: {settings.ENCODER_NAME}")
-    print(
-        f"Faiss Search Encoder Pretrained Model Name Or Path: {settings.ENCODER_PRETRAINED_MODEL_NAME_OR_PATH}"
-    )
-    print(f"Faiss Search Encoder Enable FAESM: {settings.ENCODER_ENABLE_FAESM}")
-    print(
-        f"Faiss Search Encoder Dataloader Batch Size: {settings.ENCODER_DATALOADER_BATCH_SIZE}"
-    )
-    print(
-        f"Faiss Search Encoder Dataloader Num Data Workers: {settings.ENCODER_DATALOADER_NUM_DATA_WORKERS}"
-    )
+    # Log the configuration
+    logger.info("Initializing search with configuration:")
+    logger.info("Encoder GPU: 0")
+    logger.info("Faiss Search GPUs: %s", search_gpus)
+    logger.info("NOTE: GPUs are not used for search if IVF and binary embeddings are used.")
+    logger.info("Faiss Search Algorithm: %s", settings.FAISS_SEARCH_ALGORITHM)
+    logger.info("Faiss Search Precision: %s", settings.FAISS_SEARCH_PRECISION)
+    logger.info("Faiss Search IVF NLIST: %s", settings.FAISS_SEARCH_IVF_NLIST)
+    logger.info("Faiss Search IVF NPROBE: %s", settings.FAISS_SEARCH_IVF_NPROBE)
+    logger.info("Faiss Search IVF MAX TRAIN SIZE: %s", settings.FAISS_SEARCH_IVF_MAX_TRAIN_SIZE)
+    logger.info("Faiss Search NUM QUANTIZATION WORKERS: %s", settings.FAISS_NUM_QUANTIZATION_WORKERS)
+    logger.info("Faiss Search Dataset Chunk Dir: %s", settings.FAISS_DATASET_CHUNK_DIR)
+    logger.info("Faiss Search Embedding Dataset Dir: %s", settings.FAISS_EMBEDDING_DATASET_DIR)
+    logger.info("Faiss Search Index Path: %s", settings.FAISS_INDEX_PATH)
+    logger.info("Faiss Search Encoder Name: %s", settings.ENCODER_NAME)
+    logger.info("Faiss Search Encoder Pretrained Model Name Or Path: %s", settings.ENCODER_PRETRAINED_MODEL_NAME_OR_PATH)
+    logger.info("Faiss Search Encoder Enable FAESM: %s", settings.ENCODER_ENABLE_FAESM)
+    logger.info("Faiss Search Encoder Dataloader Batch Size: %s", settings.ENCODER_DATALOADER_BATCH_SIZE)
+    logger.info("Faiss Search Encoder Dataloader Num Data Workers: %s", settings.ENCODER_DATALOADER_NUM_DATA_WORKERS)
 
     # If specified, collect all subdirectories within the chunk directory
     if settings.FAISS_DATASET_CHUNK_DIR is None:
@@ -268,7 +263,7 @@ def initialize_search(
         scale_mode=True,
     )
     end_time = time.perf_counter()
-    print(f"Faiss index initialized in {end_time - start_time:.2f} seconds")
+    logger.info("Faiss index initialized in %.2f seconds", end_time - start_time)
 
     # Initialize the encoder
     start_time = time.perf_counter()
@@ -283,22 +278,22 @@ def initialize_search(
         }
     )
     end_time = time.perf_counter()
-    print(f"Encoder initialized in {end_time - start_time:.2f} seconds")
+    logger.info("Encoder initialized in %.2f seconds", end_time - start_time)
 
     # Initialize the retriever
     start_time = time.perf_counter()
     retriever = Retriever(faiss_index=faiss_index, encoder=encoder)
     end_time = time.perf_counter()
-    print(f"Retriever initialized in {end_time - start_time:.2f} seconds")
+    logger.info("Retriever initialized in %.2f seconds", end_time - start_time)
 
     start_time = time.perf_counter()
-    print("Preloading Uniprot IDs...")
+    logger.info("Preloading Uniprot IDs...")
     num_uniprot_ids = np.arange(len(retriever.faiss_index.dataset))
     all_uniprot_ids = retriever.get(num_uniprot_ids, key="tags", scale_mode=False)
     end_time = time.perf_counter()
-    print(f"Uniprot IDs preloaded in {end_time - start_time:.2f} seconds")
+    logger.info("Uniprot IDs preloaded in %.2f seconds", end_time - start_time)
 
-    print("Search initialized.")
+    logger.info("Search initialized successfully")
 
     return retriever, all_uniprot_ids
 
@@ -419,7 +414,8 @@ async def single_test() -> None:
 
     response = await search_impl(query)
 
-    print(response)
+    logger = get_logger("search.single_test")
+    logger.info("Single test response: %s", response)
 
 
 async def genome_test() -> None:
