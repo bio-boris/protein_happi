@@ -12,12 +12,12 @@ from pydantic import BaseModel
 from typing import AsyncGenerator
 
 from logging_config import setup_logging, get_logger
-from search import LLMHomologyApiSettings
-from search import SearchRequest
-from search import SearchResponse
-from search import get_settings
-from search import initialize_search
-from search import search_impl
+from src.search import LLMHomologyApiSettings
+from src.search import SearchRequest
+from src.search import SearchResponse
+from src.search import get_settings
+from src.search import initialize_search
+from src.search import search_impl
 
 # NOTE: This implementation stores user job requests in a in-memory queue
 # and processes them in a fifo manner. The results are stored in a dictionary
