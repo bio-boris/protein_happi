@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import AsyncGenerator
 
-from logging_config import setup_logging, get_logger
+from src.logging_config import setup_logging, get_logger
 from src.search import LLMHomologyApiSettings
 from src.search import SearchRequest
 from src.search import SearchResponse
