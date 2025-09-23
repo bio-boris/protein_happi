@@ -1,16 +1,28 @@
 [project]
 name = "protein-happi"
 version = "0.1.0"
-description = "Add your description here"
+authors = [
+    {name = "Alexander Brace"},
+    {name = "Boris Sadkhin"},
+]
+description = "AI homology detection."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = "==3.12.*"
 dependencies = [
     "fastapi>=0.115.11",
     "pydantic-settings>=2.8.1",
-    "protein_search_evals==0.0.4",
+    "protein_search_evals==0.0.5",
     "uvicorn>=0.34.0",
     "faiss-gpu-cu12==1.10.0",
+    "flash-attn==2.8.3",
+    "faesm[flash-attn]==0.1.1",
+    "transformers==4.48.1", # Required for faesm
+    "torch>=2.6.0",  # As per protein_search_evals
+    
 ]
 
 [tool.uv.sources]
 protein_search_evals = { git = "https://github.com/braceal/protein_search_evals.git" }
+
+[tool.uv.extra-build-dependencies]
+flash-attn = ["torch>=2.6.0"]  # As per protein_search_evals

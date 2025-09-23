@@ -12,6 +12,7 @@ from typing import Literal
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+import time
 
 
 class LLMHomologyApiSettings(BaseSettings):
@@ -251,6 +252,7 @@ def initialize_search(
     else:
         dataset_chunk_paths = natsorted(settings.FAISS_DATASET_CHUNK_DIR.glob("*"))
 
+    start_time = time.perf_counter()
     # Initialize the faiss index
     faiss_index = FaissIndex(
         dataset_dir=settings.FAISS_EMBEDDING_DATASET_DIR,
@@ -265,8 +267,11 @@ def initialize_search(
         search_gpus=search_gpus,
         scale_mode=True,
     )
+    end_time = time.perf_counter()
+    print(f"Faiss index initialized in {end_time - start_time:.2f} seconds")
 
     # Initialize the encoder
+    start_time = time.perf_counter()
     encoder = get_encoder(
         kwargs={
             "name": settings.ENCODER_NAME,
@@ -277,20 +282,31 @@ def initialize_search(
             "verbose": True,
         }
     )
+    end_time = time.perf_counter()
+    print(f"Encoder initialized in {end_time - start_time:.2f} seconds")
 
     # Initialize the retriever
+    start_time = time.perf_counter()
     retriever = Retriever(faiss_index=faiss_index, encoder=encoder)
+    end_time = time.perf_counter()
+    print(f"Retriever initialized in {end_time - start_time:.2f} seconds")
 
+    start_time = time.perf_counter()
     print("Preloading Uniprot IDs...")
     num_uniprot_ids = np.arange(len(retriever.faiss_index.dataset))
     all_uniprot_ids = retriever.get(num_uniprot_ids, key="tags", scale_mode=False)
+    end_time = time.perf_counter()
+    print(f"Uniprot IDs preloaded in {end_time - start_time:.2f} seconds")
 
     print("Search initialized.")
 
     return retriever, all_uniprot_ids
 
 
-def search_impl(query: SearchRequest) -> SearchResponse:
+# NOTE: This is async because we want to be able to use the asyncio.Future
+# to manage the job queue and results dictionary in factory.py. In practice,
+# this function will actually be called in a synchronous manner.
+async def search_impl(query: SearchRequest) -> SearchResponse:
     """The search implementation."""
     # Get the cached retriever, or initialize it if it doesn't exist
     retriever, all_uniprot_ids = initialize_search()
@@ -383,7 +399,7 @@ def search_impl(query: SearchRequest) -> SearchResponse:
     return SearchResponse(hits=all_hits)
 
 
-def single_test() -> None:
+async def single_test() -> None:
     # A Quick Test
     data = {
         "query_sequences": [
@@ -401,12 +417,12 @@ def single_test() -> None:
 
     query = SearchRequest(**data)
 
-    response = search_impl(query)
+    response = await search_impl(query)
 
     print(response)
 
 
-def genome_test() -> None:
+async def genome_test() -> None:
     import json
     from protein_search_evals.utils import read_fasta
 
@@ -427,14 +443,16 @@ def genome_test() -> None:
 
     query = SearchRequest(**data)
 
-    response = search_impl(query)
+    response = await search_impl(query)
 
     with open(results_file, "w") as fp:
         json.dump(response.model_dump(), fp, indent=2)
 
 
 if __name__ == "__main__":
-    single_test()
-    single_test()
-    # genome_test()
-    # genome_test()
+    import asyncio
+
+    asyncio.run(single_test())
+    asyncio.run(single_test())
+    # asyncio.run(genome_test())
+    # asyncio.run(genome_test())
