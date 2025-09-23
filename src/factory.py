@@ -1,4 +1,4 @@
-"""The factory module for creating the FastAPI app with logging."""
+"""Factory module for creating the FastAPI app."""
 
 from __future__ import annotations
 import asyncio
