@@ -1,8 +1,5 @@
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
-
-
 class SearchJobResponse(BaseModel):
     job_id: str
 
