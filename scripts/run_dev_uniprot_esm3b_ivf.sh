@@ -70,4 +70,4 @@ export ENCODER_DATALOADER_NUM_DATA_WORKERS=8
 
 # ========================================
 
-uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory
+PYTHONUNBUFFERED=1 uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory
