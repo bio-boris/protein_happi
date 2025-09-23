@@ -126,25 +126,14 @@ def flush_logger(logger_name: Optional[str] = None) -> None:
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:
     """
-    Get a logger instance that works with uvicorn.
-    Auto-configures basic logging if none exists.
+    Get a logger instance.
+
+    Args:
+        name: Logger name. If None, returns the root service logger.
+
+    Returns:
+        Logger instance
     """
     if name is None:
         name = "llm_homology_api"
-
-    logger = logging.getLogger(name)
-
-    # If no handlers exist anywhere, set up basic logging
-    if not logger.handlers and not logger.parent.handlers and not logging.root.handlers:
-        # Set up basic console logging
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-
-        # Add to root logger so all loggers inherit it
-        logging.root.addHandler(handler)
-        logging.root.setLevel(logging.INFO)
-
-        logger.info("Auto-configured basic logging")
-
-    return logger
+    return logging.getLogger(name)
