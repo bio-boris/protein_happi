@@ -8,9 +8,9 @@ from typing import Optional
 
 
 def setup_logging(
-        log_level: str = "INFO",
-        log_dir: Optional[Path] = None,
-        service_name: str = "llm_homology_api"
+    log_level: str = "INFO",
+    log_dir: Optional[Path] = None,
+    service_name: str = "llm_homology_api"
 ) -> logging.Logger:
     """
     Set up logging configuration with both stdout and timestamped file output.
@@ -54,6 +54,10 @@ def setup_logging(
     console_handler = logging.StreamHandler()
     console_handler.setLevel(getattr(logging, log_level.upper()))
     console_handler.setFormatter(console_formatter)
+
+    # Force immediate flushing for console
+    console_handler.flush = lambda: console_handler.stream.flush()
+
     logger.addHandler(console_handler)
 
     # File handler with rotation
@@ -65,6 +69,14 @@ def setup_logging(
     )
     file_handler.setLevel(logging.DEBUG)  # Always log everything to file
     file_handler.setFormatter(detailed_formatter)
+
+    # Force immediate flushing for file handler
+    original_emit = file_handler.emit
+    def flush_emit(record):
+        original_emit(record)
+        file_handler.flush()
+    file_handler.emit = flush_emit
+
     logger.addHandler(file_handler)
 
     # Log the startup information
