@@ -1,4 +1,6 @@
+from typing import Self
 
+from pydantic import BaseModel, Field, model_validator
 
 
 class SearchJobResponse(BaseModel):
@@ -7,19 +9,6 @@ class SearchJobResponse(BaseModel):
 
 class SearchResultRequest(BaseModel):
     job_id: str
-
-
-class SearchResultResponse(BaseModel):
-    status: str
-    result: SearchResponse | None = None
-    error: str | None = None
-
-
-class SequenceModel(BaseModel):
-    """The model for a sequence."""
-
-    id: str = Field(..., description="The identifier of the sequence.")
-    sequence: str = Field(..., description="The sequence itself.")
 
 
 class HitModel(BaseModel):
@@ -44,6 +33,25 @@ class HitsModel(BaseModel):
         default_factory=list, description="The normalized query embedding."
     )
     total_hits: int = Field(..., description="The total number of hits.")
+
+
+class SearchResponse(BaseModel):
+    """The response model for the search endpoint."""
+
+    hits: list[HitsModel] = Field(..., description="The hits for each query sequence.")
+
+
+class SearchResultResponse(BaseModel):
+    status: str
+    result: SearchResponse | None = None
+    error: str | None = None
+
+
+class SequenceModel(BaseModel):
+    """The model for a sequence."""
+
+    id: str = Field(..., description="The identifier of the sequence.")
+    sequence: str = Field(..., description="The sequence itself.")
 
 
 class SearchRequest(BaseModel):
@@ -77,9 +85,3 @@ class SearchRequest(BaseModel):
         if self.best_hit_only:
             self.max_hits = 1
         return self
-
-
-class SearchResponse(BaseModel):
-    """The response model for the search endpoint."""
-
-    hits: list[HitsModel] = Field(..., description="The hits for each query sequence.")

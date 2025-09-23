@@ -1,19 +1,17 @@
-from typing import Self
-from functools import lru_cache
 import logging
+import time
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
-from pydantic import model_validator
+import numpy as np
 from natsort import natsorted
 from protein_search_evals.embed import get_encoder
 from protein_search_evals.search import FaissIndex
 from protein_search_evals.search import Retriever
+from pydantic import Field
 from pydantic_settings import BaseSettings
-from typing import Literal
-from pathlib import Path
 from tqdm import tqdm
-import numpy as np
-import time
 
 from src.models import HitModel, HitsModel, SearchRequest, SearchResponse
 
