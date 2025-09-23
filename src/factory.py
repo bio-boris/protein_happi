@@ -9,12 +9,12 @@ import uuid
 from typing import AsyncGenerator
 from pydantic import BaseModel
 
-from .search import get_settings
-from .search import SearchRequest
-from .search import SearchResponse
-from .search import LLMHomologyApiSettings
-from .search import search_impl
-from .search import initialize_search
+from search import get_settings
+from search import SearchRequest
+from search import SearchResponse
+from search import LLMHomologyApiSettings
+from search import search_impl
+from search import initialize_search
 
 # NOTE: This implementation stores user job requests in a in-memory queue
 # and processes them in a fifo manner. The results are stored in a dictionary

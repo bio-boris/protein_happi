@@ -1,22 +1,23 @@
 """The factory module for creating the FastAPI app."""
 
 from __future__ import annotations
+
 import asyncio
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
-import uuid
-from typing import AsyncGenerator
 from pydantic import BaseModel
+from typing import AsyncGenerator
 
-from .search import get_settings
-from .search import SearchRequest
-from .search import SearchResponse
-from .search import LLMHomologyApiSettings
-from .search import search_impl
-from .search import initialize_search
-from .logging_config import setup_logging, get_logger
+from logging_config import setup_logging, get_logger
+from search import LLMHomologyApiSettings
+from search import SearchRequest
+from search import SearchResponse
+from search import get_settings
+from search import initialize_search
+from search import search_impl
 
 # NOTE: This implementation stores user job requests in a in-memory queue
 # and processes them in a fifo manner. The results are stored in a dictionary
