@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 WORKDIR /app
-COPY pyproject.toml /app
-RUN /root/.local/bin/uv sync
+COPY pyproject.toml uv.lock /app/
+RUN /root/.local/bin/uv sync --locked --no-install-project
 COPY . /app
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
