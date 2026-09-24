@@ -946,7 +946,7 @@ requires-dist = [
     { name = "faiss-gpu-cu12", specifier = "==1.10.0" },
     { name = "fastapi", specifier = ">=0.115.11" },
     { name = "flash-attn", specifier = "==2.8.3" },
-    { name = "protein-search-evals", git = "https://github.com/braceal/protein_search_evals.git?tag=0.0.5" },
+    { name = "protein-search-evals", git = "https://github.com/ramanathanlab/genslm-embeddings.git?tag=0.0.5" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "torch", specifier = "==2.8.0" },
     { name = "transformers", specifier = "==4.48.1" },
@@ -956,7 +956,7 @@ requires-dist = [
 [[package]]
 name = "protein-search-evals"
 version = "0.0.5"
-source = { git = "https://github.com/braceal/protein_search_evals.git?tag=0.0.5#12447e16f4400f4385001ec3d7c0b396fa5c7a74" }
+source = { git = "https://github.com/ramanathanlab/genslm-embeddings.git?tag=0.0.5#12447e16f4400f4385001ec3d7c0b396fa5c7a74" }
 dependencies = [
     { name = "biopython" },
     { name = "datasets" },
