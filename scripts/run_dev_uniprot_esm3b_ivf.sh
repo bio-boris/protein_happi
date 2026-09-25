@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 
-VENV_PATH=".venv"
-if [ -d "$VENV_PATH" ]; then
-    echo "Activating virtual environment..."
-    . "$VENV_PATH/bin/activate"
-else
-    echo "Virtual environment not found at $VENV_PATH. Exiting..."
+if ! command -v uv >/dev/null 2>&1; then
+    echo "uv not found in PATH"
     exit 1
 fi
+
+echo "Using uv from: $(command -v uv)"
 
 export AUTH_URL='https://ci.kbase.us/services/auth/api/V2/me'
 export ROOT_PATH='/services/llm_homology_api/'
@@ -70,4 +68,4 @@ export ENCODER_DATALOADER_NUM_DATA_WORKERS=8
 
 # ========================================
 
-uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory
+uv run uvicorn src.factory:create_app --host 0.0.0.0 --port 5000 --factory
