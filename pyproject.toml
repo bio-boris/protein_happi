@@ -17,12 +17,12 @@ dependencies = [
     "flash-attn==2.8.3",
     "faesm[flash-attn]==0.1.1",
     "transformers==4.48.1", # Required for faesm
-    "torch>=2.6.0",  # As per protein_search_evals
-    
+    # FlashAttention 2.8.3 publishes a CPython 3.12 CUDA wheel for Torch 2.8.
+    "torch==2.8.0",
 ]
 
 [tool.uv.sources]
-protein_search_evals = { git = "https://github.com/braceal/protein_search_evals.git" }
+protein_search_evals = { git = "https://github.com/ramanathanlab/genslm-embeddings.git", tag = "0.0.5" }
 
 [tool.uv.extra-build-dependencies]
-flash-attn = ["torch>=2.6.0"]  # As per protein_search_evals
+flash-attn = ["torch==2.8.0"]

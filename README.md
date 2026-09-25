@@ -4,10 +4,10 @@
 
 # Notes
 
-* install packages with `uv add <package-name>`
-* python3.12 -m venv .venv ; source .venv/bin/activate; 
-* uv sync (caveat, you may need to ensure your .python_version file is correct and you have brew dependencies installed)
-* install protein_search_evals [install.sh](install.sh)
+- Install packages with `uv add <package-name>`.
+- Run `uv sync --locked` to create `.venv` and install the complete locked
+  environment, including the pinned `protein_search_evals` release.
+- The project requires Python 3.12 as configured in `.python-version`.
 
 
 # Brew Requirements for sentencepiece
